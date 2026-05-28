@@ -647,6 +647,16 @@ static __always_inline int xdp_flowtable_flags(struct xdp_md *ctx,
 		if (ports + 1 > data_end)
 			return XDP_PASS;
 
+		/* This leg does not walk extension headers: ports is read at
+		 * ip6h + 1 and ip6h->nexthdr is used as the L4 protocol
+		 * below. If the packet carries ext headers those are
+		 * ext-header bytes, not L4, so only offload bare TCP/UDP
+		 * here and let everything else fall through to the stack.
+		 */
+		if (ip6h->nexthdr != IPPROTO_TCP &&
+		    ip6h->nexthdr != IPPROTO_UDP)
+			return XDP_PASS;
+
 		if (ip6h->hop_limit <= 1)
 			return XDP_PASS;
 
